@@ -1,0 +1,50 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: black;
+  padding: 10px 20px;
+  color: white;
+  z-index: 1000; /* Ensures it stays on top */
+}
+
+.navbar ul {
+  list-style: none;
+  display: flex;
+  margin: 0;
+  padding: 0;
+  width: 100%; /* Ensures it takes full width */
+  justify-content: flex-end; /* Aligns items to the right */
+  padding-right: 30px; /* Adjust this value to shift left */
+}
+
+
+.navbar ul li {
+  margin: 0 15px;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+}
+
+.navbar ul li:hover {
+  color: #f0a500; /* Highlight effect */
+}
+
+/* Moves Profile to the right */
+.profile {
+  margin-left: auto;
+}
+
+/* Form Popup */
+.form-popup {
+  position: fixed;
+  top: 100px;
+  right: 50px;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 1100; /* Ensures it appears above other elements */
+}
