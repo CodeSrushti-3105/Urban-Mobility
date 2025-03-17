@@ -1,0 +1,27 @@
+.subscription-container {
+    text-align: center;
+    margin-top: 50px;
+  }
+  
+  .subscription-options {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .subscription-btn {
+    padding: 10px 20px;
+    font-size: 18px;
+    border: none;
+    cursor: pointer;
+    background-color: #f0a500;
+    color: white;
+    border-radius: 5px;
+    transition: 0.3s ease-in-out;
+  }
+  
+  .subscription-btn:hover {
+    background-color: #d48e00;
+  }
+  
