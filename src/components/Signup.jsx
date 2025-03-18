@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { auth} from "../firebase"; // ✅ Correctly import auth
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import React, { useState, useEffect } from "react";
+import { auth } from "../firebase"; // ✅ Import Firebase Auth
+import { createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import Login from "./Login";
 import "./Signup.css";
 
@@ -9,7 +9,22 @@ const Signup = ({ onClose }) => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLogin, setIsLogin] = useState(false);
+  const [user, setUser] = useState(null); // ✅ Track logged-in user
 
+  // ✅ Check if user is already signed in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user); // ✅ Store logged-in user
+      } else {
+        setUser(null); // No user, show signup
+      }
+    });
+
+    return () => unsubscribe(); // Cleanup
+  }, []);
+
+  // ✅ Handle Signup
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
@@ -18,18 +33,32 @@ const Signup = ({ onClose }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       console.log("User signed up:", userCredential.user);
       alert("Signup successful!");
-      onClose(); // Close modal after signup
+      setUser(userCredential.user); // ✅ Store user
+      onClose(); // Close modal
     } catch (error) {
       console.error("Signup error:", error.message);
       setError(error.message);
     }
   };
 
+  // ✅ Handle Logout
+  const handleLogout = async () => {
+    await signOut(auth);
+    setUser(null); // Clear user state
+  };
+
   return (
     <div className="signup-container">
       <div className="signup-form">
         <span className="close-btn" onClick={onClose}>&times;</span>
-        {isLogin ? (
+
+        {/* ✅ If user is logged in, show profile */}
+        {user ? (
+          <>
+            <h2>Welcome, {user.email}</h2>
+            <button onClick={handleLogout}>Logout</button>
+          </>
+        ) : isLogin ? (
           <Login switchToSignup={() => setIsLogin(false)} />
         ) : (
           <>

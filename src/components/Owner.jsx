@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase";
-import { collection, getDocs, addDoc, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { db, auth } from "../firebase"; // ✅ Import auth to get user
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, query, where } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 import "./Owner.css"; // Styling file
 
 const Owner = () => {
@@ -10,15 +11,32 @@ const Owner = () => {
   const [price, setPrice] = useState("");
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
-  const [vehicles, setVehicles] = useState([]); // Store vehicles
+  const [vehicles, setVehicles] = useState([]); // Store user-specific vehicles
+  const [userId, setUserId] = useState(null); // ✅ Store logged-in user ID
   const [deletedVehicle, setDeletedVehicle] = useState(null); // Store last deleted vehicle
   const [undoTimeout, setUndoTimeout] = useState(null); // Store timeout ID
 
-  // Fetch vehicles from Firestore
-  const fetchVehicles = async () => {
+  // ✅ Get logged-in user's UID
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid); // ✅ Store the user ID
+        fetchVehicles(user.uid); // ✅ Fetch only this user's vehicles
+      } else {
+        setUserId(null);
+        setVehicles([]); // Clear vehicles if logged out
+      }
+    });
+
+    return () => unsubscribe(); // Cleanup
+  }, []);
+
+  // ✅ Fetch only the logged-in user's vehicles
+  const fetchVehicles = async (userId) => {
     try {
       const vehiclesCollection = collection(db, "vehicles");
-      const vehicleSnapshot = await getDocs(vehiclesCollection);
+      const q = query(vehiclesCollection, where("userId", "==", userId)); // ✅ Fetch only user's vehicles
+      const vehicleSnapshot = await getDocs(q);
       const vehicleList = vehicleSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -29,15 +47,15 @@ const Owner = () => {
     }
   };
 
-  // Fetch vehicles on component mount
-  useEffect(() => {
-    fetchVehicles();
-  }, []);
-
-  // Add a new vehicle
+  // ✅ Add a new vehicle with user ID
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(""); // Reset message
+    setMessage("");
+
+    if (!userId) {
+      setMessage("❌ Please log in to register a vehicle.");
+      return;
+    }
 
     try {
       await addDoc(collection(db, "vehicles"), {
@@ -46,6 +64,7 @@ const Owner = () => {
         availability,
         price,
         contact,
+        userId, // ✅ Store the user's unique ID
         timestamp: new Date(),
       });
 
@@ -56,14 +75,14 @@ const Owner = () => {
       setPrice("");
       setContact("");
 
-      fetchVehicles();
+      fetchVehicles(userId); // Refresh user's vehicles
     } catch (error) {
       console.error("Error adding document: ", error);
       setMessage("❌ Error registering vehicle.");
     }
   };
 
-  // Delete a vehicle and enable undo option
+  // ✅ Delete a vehicle
   const handleDelete = async (id) => {
     try {
       const vehicleToDelete = vehicles.find((vehicle) => vehicle.id === id);
@@ -76,14 +95,14 @@ const Owner = () => {
       // Set a timer to clear the undo option after 5 seconds
       const timeout = setTimeout(() => {
         setDeletedVehicle(null);
-      }, 5000);
+      }, 5000000);
       setUndoTimeout(timeout);
     } catch (error) {
       console.error("Error deleting vehicle:", error);
     }
   };
 
-  // Restore the deleted vehicle
+  // ✅ Restore the deleted vehicle
   const handleUndo = async () => {
     if (!deletedVehicle) return;
 
