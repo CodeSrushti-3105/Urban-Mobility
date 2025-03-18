@@ -41,3 +41,25 @@ button {
 button:hover {
   background-color: #444;
 }
+
+.undo-container {
+  background-color: #ffcc00;
+  color: black;
+  padding: 10px;
+  text-align: center;
+  margin-top: 10px;
+  border-radius: 5px;
+}
+
+.undo-btn {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.undo-btn:hover {
+  background: black;
+}

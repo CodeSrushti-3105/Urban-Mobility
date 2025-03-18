@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc } from "firebase/firestore";
 import "./Owner.css"; // Styling file
 
 const Owner = () => {
@@ -11,8 +11,10 @@ const Owner = () => {
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
   const [vehicles, setVehicles] = useState([]); // Store vehicles
+  const [deletedVehicle, setDeletedVehicle] = useState(null); // Store last deleted vehicle
+  const [undoTimeout, setUndoTimeout] = useState(null); // Store timeout ID
 
-  // Function to fetch vehicles from Firestore
+  // Fetch vehicles from Firestore
   const fetchVehicles = async () => {
     try {
       const vehiclesCollection = collection(db, "vehicles");
@@ -32,13 +34,13 @@ const Owner = () => {
     fetchVehicles();
   }, []);
 
-  // Function to add a new vehicle
+  // Add a new vehicle
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(""); // Reset message
 
     try {
-      const docRef = await addDoc(collection(db, "vehicles"), {
+      await addDoc(collection(db, "vehicles"), {
         vehicleName,
         model,
         availability,
@@ -54,7 +56,6 @@ const Owner = () => {
       setPrice("");
       setContact("");
 
-      // Fetch updated vehicle list
       fetchVehicles();
     } catch (error) {
       console.error("Error adding document: ", error);
@@ -62,13 +63,37 @@ const Owner = () => {
     }
   };
 
-  // Function to delete a vehicle
+  // Delete a vehicle and enable undo option
   const handleDelete = async (id) => {
     try {
-      await deleteDoc(doc(db, "vehicles", id));
+      const vehicleToDelete = vehicles.find((vehicle) => vehicle.id === id);
+      if (!vehicleToDelete) return;
+
+      setDeletedVehicle(vehicleToDelete); // Store the deleted vehicle
       setVehicles(vehicles.filter((vehicle) => vehicle.id !== id)); // Update UI
+      await deleteDoc(doc(db, "vehicles", id));
+
+      // Set a timer to clear the undo option after 5 seconds
+      const timeout = setTimeout(() => {
+        setDeletedVehicle(null);
+      }, 5000);
+      setUndoTimeout(timeout);
     } catch (error) {
       console.error("Error deleting vehicle:", error);
+    }
+  };
+
+  // Restore the deleted vehicle
+  const handleUndo = async () => {
+    if (!deletedVehicle) return;
+
+    try {
+      await setDoc(doc(db, "vehicles", deletedVehicle.id), deletedVehicle);
+      setVehicles([...vehicles, deletedVehicle]); // Restore in UI
+      setDeletedVehicle(null);
+      clearTimeout(undoTimeout); // Clear timeout
+    } catch (error) {
+      console.error("Error restoring vehicle:", error);
     }
   };
 
@@ -79,38 +104,14 @@ const Owner = () => {
       {message && <p className="message">{message}</p>}
 
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Vehicle Name"
-          value={vehicleName}
-          onChange={(e) => setVehicleName(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Model"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          required
-        />
+        <input type="text" placeholder="Vehicle Name" value={vehicleName} onChange={(e) => setVehicleName(e.target.value)} required />
+        <input type="text" placeholder="Model" value={model} onChange={(e) => setModel(e.target.value)} required />
         <select value={availability} onChange={(e) => setAvailability(e.target.value)}>
           <option value="Yes">Available</option>
           <option value="No">Not Available</option>
         </select>
-        <input
-          type="number"
-          placeholder="Price per Day"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Contact Details"
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          required
-        />
+        <input type="number" placeholder="Price per Day" value={price} onChange={(e) => setPrice(e.target.value)} required />
+        <input type="text" placeholder="Contact Details" value={contact} onChange={(e) => setContact(e.target.value)} required />
         <button type="submit">Register Vehicle</button>
       </form>
 
@@ -127,13 +128,18 @@ const Owner = () => {
               <p><strong>Availability:</strong> {vehicle.availability}</p>
               <p><strong>Price per Day:</strong> ₹{vehicle.price}</p>
               <p><strong>Contact:</strong> {vehicle.contact}</p>
-              <button onClick={() => handleDelete(vehicle.id)} className="delete-btn">
-                ❌ Delete
-              </button>
+              <button onClick={() => handleDelete(vehicle.id)} className="delete-btn">❌ Delete</button>
             </div>
           ))
         )}
       </div>
+
+      {/* Undo Delete Button */}
+      {deletedVehicle && (
+        <div className="undo-container">
+          <p>Vehicle deleted! <button onClick={handleUndo} className="undo-btn">Undo</button></p>
+        </div>
+      )}
     </div>
   );
 };
