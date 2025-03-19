@@ -101,7 +101,8 @@ const User = () => {
         });
       }
 
-      await setDoc(doc(db, "subscriptions", userId), {
+      const subscriptionRef = doc(db, "subscriptions", `${userId}_${userEmail}`);
+      await setDoc(subscriptionRef, {
         userId,
         email: userEmail,
         vehicleId: selectedVehicle.id,
