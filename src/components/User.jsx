@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { db, auth } from "../firebase"; // ✅ Ensure auth is correctly imported
-import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { db, auth } from "../firebase";
+import { collection, getDocs, doc, setDoc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
 import "./User.css";
 
 const User = () => {
@@ -10,22 +10,16 @@ const User = () => {
   const [needsDriver, setNeedsDriver] = useState(null);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [userEmail, setUserEmail] = useState(null);
+  const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("");
   const [userAddress, setUserAddress] = useState("");
 
   useEffect(() => {
-    const fetchUser = async () => {
-      auth.onAuthStateChanged((user) => {
-        if (user) {
-          setUserId(user.uid);
-          setUserEmail(user.email);
-          console.log(`✅ User logged in: ${user.uid}`);
-        } else {
-          console.warn("⚠️ No user logged in");
-        }
-      });
-    };
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        setUserId(user.uid);
+      }
+    });
 
     const fetchVehicles = async () => {
       try {
@@ -35,32 +29,25 @@ const User = () => {
           ...doc.data(),
         }));
         setVehicles(vehicleList);
-        console.log(`🚗 Fetched ${vehicleList.length} vehicles.`);
       } catch (error) {
         console.error("❌ Error fetching vehicles:", error);
       }
     };
 
-    fetchUser();
     fetchVehicles();
   }, []);
 
-  // Handle Subscribe Click
   const handleSubscribe = (vehicle) => {
-    console.log(`🚀 Subscribing to vehicle: ${vehicle.vehicleName}, ID: ${vehicle.id}`);
-    
-    setSelectedVehicle(vehicle);  // ✅ Ensure state updates
-    setShowTerms(true);           // ✅ Show terms popup
-    setNeedsDriver(null);         // ✅ Reset driver choice
+    setSelectedVehicle(vehicle);
+    setShowTerms(true);
+    setNeedsDriver(null);
   };
 
-  // Handle Accept Terms
   const handleAcceptTerms = () => {
     setShowTerms(false);
     setNeedsDriver(null);
   };
 
-  // Handle Driver Choice
   const handleDriverChoice = (choice) => {
     setNeedsDriver(choice);
     if (choice === "yes") {
@@ -70,20 +57,22 @@ const User = () => {
     }
   };
 
-  // Handle License Upload (without storing)
   const handleLicenseUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      console.log("📄 License uploaded:", file.name);
       setIsAuthorized(true);
       authorizeUser();
     }
   };
 
-  // Update Firestore with Subscription Details
   const authorizeUser = async () => {
     if (!userId) {
-      alert("Please log in to subscribe.");
+      alert("❌ Please log in to subscribe.");
+      return;
+    }
+
+    if (!userEmail || !userName || !userAddress) {
+      alert("❌ Please fill in all details.");
       return;
     }
 
@@ -92,8 +81,14 @@ const User = () => {
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        await updateDoc(userRef, { authorized: true });
-        console.log(`✅ User ${userId} updated in Firestore`);
+        await updateDoc(userRef, { 
+          authorized: true, 
+          email: userEmail,  
+          name: userName,
+          address: userAddress,
+          vehicleId: selectedVehicle.id,  // ✅ Store vehicle details
+          vehicleName: selectedVehicle.vehicleName,
+        });
       } else {
         await setDoc(userRef, {
           userId,
@@ -101,11 +96,11 @@ const User = () => {
           name: userName,
           address: userAddress,
           authorized: true,
+          vehicleId: selectedVehicle.id,  // ✅ Store vehicle details
+          vehicleName: selectedVehicle.vehicleName,
         });
-        console.log(`📌 New user created in Firestore: ${userId}`);
       }
 
-      // Store Subscription Details in Firestore
       await setDoc(doc(db, "subscriptions", userId), {
         userId,
         email: userEmail,
@@ -116,7 +111,11 @@ const User = () => {
         timestamp: new Date(),
       });
 
-      alert("✅ You are authorized!");
+      // 🔥 Remove the vehicle from the "vehicles" collection
+      await deleteDoc(doc(db, "vehicles", selectedVehicle.id));
+
+      alert("✅ Subscription Successful! Vehicle removed from available list.");
+      setSelectedVehicle(null); 
     } catch (error) {
       console.error("❌ Error updating Firestore:", error);
     }
@@ -128,7 +127,7 @@ const User = () => {
       <div>
         {vehicles.length > 0 ? (
           vehicles.map((vehicle) => (
-            <div key={vehicle.id} style={{ border: "1px solid black", padding: "10px", margin: "10px" }}>
+            <div key={vehicle.id} className="vehicle-card">
               <h3>{vehicle.vehicleName}</h3>
               <p>Model: {vehicle.model}</p>
               <p>Availability: {vehicle.availability}</p>
@@ -142,7 +141,6 @@ const User = () => {
         )}
       </div>
 
-      {/* Terms & Conditions Popup */}
       {showTerms && (
         <div className="popup">
           <h3>Terms & Conditions</h3>
@@ -151,37 +149,33 @@ const User = () => {
         </div>
       )}
 
-      {/* Subscription Form */}
       {needsDriver === null && !showTerms && selectedVehicle && (
-  <div className="popup">
-    {console.log("📌 Rendering Subscription Form for:", selectedVehicle.vehicleName)}
-    <h3>Enter Your Details</h3>
-    <input
-      type="text"
-      placeholder="Full Name"
-      value={userName}
-      onChange={(e) => setUserName(e.target.value)}
-    />
-    <input
-      type="email"
-      placeholder="Email"
-      value={userEmail}
-      readOnly
-    />
-    <input
-      type="text"
-      placeholder="Address"
-      value={userAddress}
-      onChange={(e) => setUserAddress(e.target.value)}
-    />
-    <h3>Do you need a driver?</h3>
-    <button onClick={() => handleDriverChoice("yes")}>Yes</button>
-    <button onClick={() => handleDriverChoice("no")}>No</button>
-  </div>
-)}
+        <div className="popup">
+          <h3>Enter Your Details</h3>
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+          />
+          <input
+            type="email"
+            placeholder="Enter Your Email"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Address"
+            value={userAddress}
+            onChange={(e) => setUserAddress(e.target.value)}
+          />
+          <h3>Do you need a driver?</h3>
+          <button onClick={() => handleDriverChoice("yes")}>Yes</button>
+          <button onClick={() => handleDriverChoice("no")}>No</button>
+        </div>
+      )}
 
-
-      {/* License Upload Popup */}
       {needsDriver === "no" && !isAuthorized && (
         <div className="popup">
           <h3>Upload Your Driving License</h3>
