@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { auth, db } from "../firebase"; // ✅ Import Firestore
+import { auth, db } from "../firebase"; // Firestore setup
 import { createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore"; // ✅ Import Firestore methods
+import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore"; // Firestore methods
 import Login from "./Login";
 import "./Signup.css";
 
@@ -10,14 +10,14 @@ const Signup = ({ onClose }) => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLogin, setIsLogin] = useState(false);
-  const [user, setUser] = useState(null); // ✅ Track logged-in user
-  const [subscriptions, setSubscriptions] = useState([]); // ✅ Store multiple subscriptions
+  const [user, setUser] = useState(null);
+  const [subscriptions, setSubscriptions] = useState([]); // Stores user subscriptions
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
-        await fetchSubscriptions(user.uid); // ✅ Fetch all subscriptions
+        await fetchSubscriptions(user.uid);
       } else {
         setUser(null);
         setSubscriptions([]); // Clear subscriptions when logged out
@@ -27,7 +27,7 @@ const Signup = ({ onClose }) => {
     return () => unsubscribe(); // Cleanup
   }, []);
 
-  // ✅ Fetch all user subscriptions from Firestore
+  // ✅ Fetch user subscriptions
   const fetchSubscriptions = async (userId) => {
     try {
       const subscriptionsRef = collection(db, "subscriptions");
@@ -36,7 +36,7 @@ const Signup = ({ onClose }) => {
 
       const subscriptionList = [];
       querySnapshot.forEach((doc) => {
-        subscriptionList.push({ id: doc.id, ...doc.data() }); // ✅ Include subscription ID for deletion
+        subscriptionList.push({ id: doc.id, ...doc.data() }); // Include `id` for deletion
       });
 
       setSubscriptions(subscriptionList);
@@ -45,15 +45,23 @@ const Signup = ({ onClose }) => {
     }
   };
 
-  // ✅ Delete Subscription
-  const handleDeleteSubscription = async (subscriptionId) => {
+  // ✅ Unsubscribe (Delete from "subscriptions" and update "vehicles")
+  const handleUnsubscribe = async (subscriptionId, vehicleId) => {
     try {
+      // 1️⃣ Delete the subscription
       await deleteDoc(doc(db, "subscriptions", subscriptionId));
-      setSubscriptions(subscriptions.filter((sub) => sub.id !== subscriptionId));
-      alert("Subscription deleted successfully!");
+
+      // 2️⃣ Update vehicle availability to "Yes" (so it's visible in users section)
+      const vehicleRef = doc(db, "vehicles", vehicleId);
+      await updateDoc(vehicleRef, { availability: "Yes" });
+
+      // 3️⃣ Update UI immediately
+      setSubscriptions((prev) => prev.filter((sub) => sub.id !== subscriptionId));
+
+      alert("Unsubscribed successfully!");
     } catch (error) {
-      console.error("❌ Error deleting subscription:", error);
-      alert("Failed to delete subscription. Try again.");
+      console.error("❌ Error unsubscribing:", error);
+      alert("Failed to unsubscribe. Try again.");
     }
   };
 
@@ -99,10 +107,13 @@ const Signup = ({ onClose }) => {
                     <h4>🚗 {sub.vehicleName}</h4>
                     <p>👨‍✈️ Needs Driver: {sub.needsDriver ? "Yes" : "No"}</p>
                     <p>✅ Status: {sub.authorized ? "Authorized ✅" : "Pending ⏳"}</p>
-                    
+
                     {/* ✅ Delete Button */}
-                    <button className="delete-btn" onClick={() => handleDeleteSubscription(sub.id)}>
-                      🗑️ Delete
+                    <button
+                      className="delete-btn"
+                      onClick={() => handleUnsubscribe(sub.id, sub.vehicleId)}
+                    >
+                      🗑️ Unsubscribe
                     </button>
                   </div>
                 ))}
