@@ -76,18 +76,39 @@
   color: red; /* Optional: Change color on hover */
 }
 
-.subscription-card {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin-top: 10px;
-  background: #f9f9f9;
-  border-radius: 5px;
+.signup-container {
+  text-align: center;
+  padding: 20px;
 }
-.subscription-card h4 {
-  margin: 0;
+
+.subscriptions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3x3 Grid */
+  gap: 20px;
+  padding: 20px;
+  justify-items: center;
+}
+
+.subscription-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 280px;
+  text-align: left;
+  transition: transform 0.3s ease-in-out;
+}
+
+.subscription-card:hover {
+  transform: scale(1.05);
+}
+
+h3 {
   color: #333;
 }
-.subscription-card p {
+
+p {
   margin: 5px 0;
   font-size: 14px;
 }
+

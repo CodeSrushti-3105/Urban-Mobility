@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "../firebase"; // ✅ Import Firestore
 import { createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore"; // ✅ Import Firestore methods
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore"; // ✅ Import Firestore methods
 import Login from "./Login";
 import "./Signup.css";
 
@@ -36,12 +36,24 @@ const Signup = ({ onClose }) => {
 
       const subscriptionList = [];
       querySnapshot.forEach((doc) => {
-        subscriptionList.push({ id: doc.id, ...doc.data() });
+        subscriptionList.push({ id: doc.id, ...doc.data() }); // ✅ Include subscription ID for deletion
       });
 
       setSubscriptions(subscriptionList);
     } catch (error) {
       console.error("❌ Error fetching subscriptions:", error);
+    }
+  };
+
+  // ✅ Delete Subscription
+  const handleDeleteSubscription = async (subscriptionId) => {
+    try {
+      await deleteDoc(doc(db, "subscriptions", subscriptionId));
+      setSubscriptions(subscriptions.filter((sub) => sub.id !== subscriptionId));
+      alert("Subscription deleted successfully!");
+    } catch (error) {
+      console.error("❌ Error deleting subscription:", error);
+      alert("Failed to delete subscription. Try again.");
     }
   };
 
@@ -81,14 +93,20 @@ const Signup = ({ onClose }) => {
             {/* ✅ Subscription Section */}
             <h3>Your Subscriptions</h3>
             {subscriptions.length > 0 ? (
-              subscriptions.map((sub) => (
-                <div className="subscription-card" key={sub.id}>
-                  <h4>🚗 Vehicle: {sub.vehicleName}</h4>
-                  <p>🔹 Subscription ID: {sub.id}</p>
-                  <p>👨‍✈️ Needs Driver: {sub.needsDriver ? "Yes" : "No"}</p>
-                  <p>✅ Authorized: {sub.authorized ? "Approved" : "Pending"}</p>
-                </div>
-              ))
+              <div className="subscriptions-grid">
+                {subscriptions.map((sub) => (
+                  <div className="subscription-card" key={sub.id}>
+                    <h4>🚗 {sub.vehicleName}</h4>
+                    <p>👨‍✈️ Needs Driver: {sub.needsDriver ? "Yes" : "No"}</p>
+                    <p>✅ Status: {sub.authorized ? "Authorized ✅" : "Pending ⏳"}</p>
+                    
+                    {/* ✅ Delete Button */}
+                    <button className="delete-btn" onClick={() => handleDeleteSubscription(sub.id)}>
+                      🗑️ Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p>No active subscriptions.</p>
             )}
