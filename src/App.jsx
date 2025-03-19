@@ -6,6 +6,8 @@ import Login from "./components/Login";
 import Subscription from "./components/Subscription";
 import Owner from "./components/Owner"; // Import Owner component
 import User from "./components/User";
+import Driver from "./components/Driver";
+
 
 const App = () => {
   return (
@@ -16,8 +18,9 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<h1>Welcome to Dashboard</h1>} />
         <Route path="/subscription" element={<Subscription />} />
-        <Route path="/owner" element={<Owner />} /> {/* Add this route */}
-        <Route path="/user" element={<User />} /> {/* Add User Route */}
+        <Route path="/owner" element={<Owner />} /> 
+        <Route path="/user" element={<User />} /> 
+        <Route path="/driver" element={<Driver />} /> 
       </Routes>
     </>
   );

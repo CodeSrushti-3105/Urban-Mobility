@@ -1,0 +1,86 @@
+.driver-container {
+    max-width: 500px;
+    margin: auto;
+    text-align: center;
+    padding: 20px;
+    background: #f4f4f4;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  h2 {
+    color: #333;
+  }
+  
+  .options {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  
+  .option-btn {
+    margin: 10px;
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    background: #ddd;
+    transition: 0.3s;
+  }
+  
+  .option-btn.active {
+    background: #007bff;
+    color: white;
+  }
+  
+  .option-btn:hover {
+    background: #007bff;
+    color: white;
+  }
+  
+  .form-section {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    margin-top: 10px;
+  }
+  
+  form input {
+    width: 90%;
+    margin: 8px 0;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  form button {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  
+  form button:hover {
+    background: #218838;
+  }
+  
+  .back-btn {
+    margin-top: 15px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  
+  .back-btn:hover {
+    background: #c82333;
+  }
+  
