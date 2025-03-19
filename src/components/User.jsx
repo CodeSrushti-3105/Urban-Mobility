@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
-import { collection, getDocs, doc, setDoc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 import "./User.css";
 
 const User = () => {
@@ -86,7 +86,7 @@ const User = () => {
           email: userEmail,  
           name: userName,
           address: userAddress,
-          vehicleId: selectedVehicle.id,  // ✅ Store vehicle details
+          vehicleId: selectedVehicle.id,  
           vehicleName: selectedVehicle.vehicleName,
         });
       } else {
@@ -96,7 +96,7 @@ const User = () => {
           name: userName,
           address: userAddress,
           authorized: true,
-          vehicleId: selectedVehicle.id,  // ✅ Store vehicle details
+          vehicleId: selectedVehicle.id,  
           vehicleName: selectedVehicle.vehicleName,
         });
       }
@@ -111,11 +111,19 @@ const User = () => {
         timestamp: new Date(),
       });
 
-      // 🔥 Remove the vehicle from the "vehicles" collection
-      await deleteDoc(doc(db, "vehicles", selectedVehicle.id));
+      // 🔥 Instead of deleting, update the vehicle's availability to "no"
+      const vehicleRef = doc(db, "vehicles", selectedVehicle.id);
+      await updateDoc(vehicleRef, { availability: "no" });
 
-      alert("✅ Subscription Successful! Vehicle removed from available list.");
-      setSelectedVehicle(null); 
+      // ✅ Immediately update UI after booking
+      setVehicles((prevVehicles) =>
+        prevVehicles.map((vehicle) =>
+          vehicle.id === selectedVehicle.id ? { ...vehicle, availability: "no" } : vehicle
+        )
+      );
+
+      alert("✅ Subscription Successful! Vehicle marked as unavailable.");
+      setSelectedVehicle(null);
     } catch (error) {
       console.error("❌ Error updating Firestore:", error);
     }
@@ -126,16 +134,18 @@ const User = () => {
       <h2>Available Vehicles</h2>
       <div>
         {vehicles.length > 0 ? (
-          vehicles.map((vehicle) => (
-            <div key={vehicle.id} className="vehicle-card">
-              <h3>{vehicle.vehicleName}</h3>
-              <p>Model: {vehicle.model}</p>
-              <p>Availability: {vehicle.availability}</p>
-              <p>Price per Day: ₹{vehicle.price}</p>
-              <p>Contact: {vehicle.contact}</p>
-              <button onClick={() => handleSubscribe(vehicle)}>Subscribe</button>
-            </div>
-          ))
+          vehicles
+            .filter((vehicle) => vehicle.availability !== "no") // 🚀 Filter out unavailable vehicles
+            .map((vehicle) => (
+              <div key={vehicle.id} className="vehicle-card">
+                <h3>{vehicle.vehicleName}</h3>
+                <p>Model: {vehicle.model}</p>
+                <p>Availability: {vehicle.availability}</p>
+                <p>Price per Day: ₹{vehicle.price}</p>
+                <p>Contact: {vehicle.contact}</p>
+                <button onClick={() => handleSubscribe(vehicle)}>Subscribe</button>
+              </div>
+            ))
         ) : (
           <p>No vehicles available.</p>
         )}
