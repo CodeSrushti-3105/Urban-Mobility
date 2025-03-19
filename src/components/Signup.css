@@ -75,3 +75,19 @@
 .close-btn:hover {
   color: red; /* Optional: Change color on hover */
 }
+
+.subscription-card {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-top: 10px;
+  background: #f9f9f9;
+  border-radius: 5px;
+}
+.subscription-card h4 {
+  margin: 0;
+  color: #333;
+}
+.subscription-card p {
+  margin: 5px 0;
+  font-size: 14px;
+}
