@@ -1,70 +1,80 @@
 import React, { useState, useEffect } from "react";
-import { db, auth } from "../firebase"; // Firebase setup
-import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore";
-
-import "./Blabla.css"; // Ensure this file exists
+import { db, auth } from "../firebase";
+import { collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import "./Blabla.css";
 
 const Blabla = () => {
   const [rides, setRides] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [rideType, setRideType] = useState("offer"); // Default: Offer a Ride
+  const [rideType, setRideType] = useState("offer");
   const [startAddress, setStartAddress] = useState("");
   const [endAddress, setEndAddress] = useState("");
   const [price, setPrice] = useState("");
   const [seatsAvailable, setSeatsAvailable] = useState(1);
   const [contactNumber, setContactNumber] = useState("");
-  const [selectedTab, setSelectedTab] = useState("offer"); // 'offer' or 'need'
+  const [selectedTab, setSelectedTab] = useState("offer");
   const [loading, setLoading] = useState(false);
+  const [editingRide, setEditingRide] = useState(null); // Store ride being edited
 
-  // Fetch all rides based on selected tab
+  // Fetch rides
   useEffect(() => {
     const fetchRides = async () => {
       const querySnapshot = await getDocs(collection(db, "blabla"));
       const rideList = querySnapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .filter((ride) => ride.rideType !== selectedTab); // Show opposite ride type
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((ride) => ride.rideType !== selectedTab);
       setRides(rideList);
     };
     fetchRides();
-  }, [selectedTab]); // Fetch whenever tab changes
+  }, [selectedTab]);
 
-  // Handle Ride Submission
+  // Add or Update Ride
   const handleRideSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      await addDoc(collection(db, "blabla"), {
-        rideType,
-        startAddress,
-        endAddress,
-        price,
-        seatsAvailable,
-        contactNumber,
-        userId: auth.currentUser?.uid || "anonymous",
-        createdAt: new Date(),
-      });
-      alert("Ride added successfully!");
+      if (editingRide) {
+        // Update existing ride
+        const rideRef = doc(db, "blabla", editingRide.id);
+        await updateDoc(rideRef, { startAddress, endAddress, price, seatsAvailable, contactNumber });
+        setRides(rides.map((r) => (r.id === editingRide.id ? { ...r, startAddress, endAddress, price, seatsAvailable, contactNumber } : r)));
+        setEditingRide(null);
+      } else {
+        // Add new ride
+        const docRef = await addDoc(collection(db, "blabla"), {
+          rideType,
+          startAddress,
+          endAddress,
+          price,
+          seatsAvailable,
+          contactNumber,
+          userId: auth.currentUser?.uid || "anonymous",
+          createdAt: new Date(),
+        });
+        setRides([...rides, { id: docRef.id, rideType, startAddress, endAddress, price, seatsAvailable, contactNumber }]);
+      }
+      
+      alert(editingRide ? "Ride updated successfully!" : "Ride added successfully!");
       setShowForm(false);
+      setEditingRide(null);
     } catch (error) {
-      console.error("Error adding ride:", error);
+      console.error("Error saving ride:", error);
     }
+
     setLoading(false);
   };
 
-  // Confirm Ride & Store in `cirm` Collection
+  // Confirm Ride
   const confirmRide = async (rideId) => {
     if (!auth.currentUser) {
       alert("Please log in to confirm a ride.");
       return;
     }
     try {
-      const confirmRef = doc(collection(db, "cirm"), rideId);
-      await setDoc(confirmRef, {
+      await setDoc(doc(collection(db, "cirm"), rideId), {
         userId: auth.currentUser.uid,
-        rideId: rideId,
+        rideId,
         confirmedAt: new Date(),
       });
       alert("Ride confirmed successfully!");
@@ -73,13 +83,37 @@ const Blabla = () => {
     }
   };
 
+  // Delete Ride
+  const deleteRide = async (rideId) => {
+    if (!window.confirm("Are you sure you want to delete this ride?")) return;
+    try {
+      await deleteDoc(doc(db, "blabla", rideId));
+      setRides(rides.filter((r) => r.id !== rideId));
+      alert("Ride deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting ride:", error);
+    }
+  };
+
+  // Edit Ride
+  const editRide = (ride) => {
+    setEditingRide(ride);
+    setRideType(ride.rideType);
+    setStartAddress(ride.startAddress);
+    setEndAddress(ride.endAddress);
+    setPrice(ride.price);
+    setSeatsAvailable(ride.seatsAvailable);
+    setContactNumber(ride.contactNumber);
+    setShowForm(true);
+  };
+
   return (
     <div className="ride-container">
       <h2>🚗 BlaBla Rides</h2>
 
-      {/* Create New Ride Button */}
-      <button className="btn-create" onClick={() => setShowForm(!showForm)}>
-        {showForm ? "❌ Close Form" : "➕ Create New Ride"}
+      {/* Create/Edit Ride Button */}
+      <button className="btn-create" onClick={() => { setShowForm(!showForm); setEditingRide(null); }}>
+        {showForm ? "❌ Close Form" : editingRide ? "✏️ Edit Ride" : "➕ Create New Ride"}
       </button>
 
       {/* Ride Form */}
@@ -102,7 +136,7 @@ const Blabla = () => {
           )}
           <input type="tel" placeholder="📞 Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} required />
           <button type="submit" disabled={loading}>
-            {loading ? "🚀 Saving..." : "✅ Submit Ride"}
+            {loading ? "🚀 Saving..." : editingRide ? "✅ Update Ride" : "✅ Submit Ride"}
           </button>
         </form>
       )}
@@ -117,7 +151,7 @@ const Blabla = () => {
         </button>
       </div>
 
-      {/* Display Available Rides Based on Selection */}
+      {/* Display Rides */}
       <div className="ride-list">
         <h3>{selectedTab === "offer" ? "🙋‍♂️ People Who Need Rides" : "🚗 Available Offered Rides"}</h3>
         {rides.length === 0 ? (
@@ -134,9 +168,9 @@ const Blabla = () => {
                 </>
               )}
               <p><strong>📞 Contact:</strong> {ride.contactNumber}</p>
-              <button className="btn-confirm" onClick={() => confirmRide(ride.id)}>
-                ✅ Confirm Ride
-              </button>
+              <button className="btn-confirm" onClick={() => confirmRide(ride.id)}>✅ Confirm Ride</button>
+              <button className="btn-edit" onClick={() => editRide(ride)}>✏️ Edit</button>
+              <button className="btn-delete" onClick={() => deleteRide(ride.id)}>🗑 Delete</button>
             </div>
           ))
         )}
