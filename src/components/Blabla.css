@@ -1,48 +1,62 @@
-.blabla-container {
-    text-align: center;
-    padding: 20px;
-  }
-  
-  .ride-options button {
-    margin: 10px;
-    padding: 10px 15px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-  
-  .ride-form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    margin-top: 20px;
-  }
-  
-  .ride-form input, .ride-form select {
-    padding: 8px;
-    width: 250px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-  
-  .ride-form button {
-    padding: 10px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-  }
-  
-  ul {
-    list-style-type: none;
-    padding: 0;
-  }
-  
-  ul li {
-    background: #f4f4f4;
-    margin: 10px auto;
-    padding: 10px;
-    width: 80%;
-    border-radius: 5px;
-  }
-  
+.ride-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.btn-create {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.ride-form {
+  display: flex;
+  flex-direction: column;
+  max-width: 300px;
+  margin: auto;
+  gap: 10px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.ride-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ride-tabs button {
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  border-radius: 5px;
+}
+
+.ride-tabs .active {
+  background-color: #0056b3;
+}
+
+.ride-card {
+  border: 1px solid #ddd;
+  padding: 15px;
+  margin: 10px auto;
+  max-width: 400px;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  animation: slideIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

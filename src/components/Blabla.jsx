@@ -1,160 +1,148 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { db, auth } from "../firebase";
-import { collection, addDoc, getDocs, serverTimestamp, query, where } from "firebase/firestore";
-import { FaCar, FaCheckCircle } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { db, auth } from "../firebase"; // Firebase setup
+import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore";
 
-const BlaBla = () => {
-  const [showForm, setShowForm] = useState(false);
+import "./Blabla.css"; // Ensure this file exists
+
+const Blabla = () => {
   const [rides, setRides] = useState([]);
-  const [confirmedRides, setConfirmedRides] = useState([]);
-  const [formData, setFormData] = useState({
-    startAddress: "",
-    endAddress: "",
-    pincode: "",
-    phoneNumber: "",
-    price: "",
-    rideType: "offer",
-  });
+  const [showForm, setShowForm] = useState(false);
+  const [rideType, setRideType] = useState("offer"); // Default: Offer a Ride
+  const [startAddress, setStartAddress] = useState("");
+  const [endAddress, setEndAddress] = useState("");
+  const [price, setPrice] = useState("");
+  const [seatsAvailable, setSeatsAvailable] = useState(1);
+  const [contactNumber, setContactNumber] = useState("");
+  const [selectedTab, setSelectedTab] = useState("offer"); // 'offer' or 'need'
+  const [loading, setLoading] = useState(false);
 
-  const user = auth.currentUser;
-
-  // Handle input change
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // Submit New Ride
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      alert("Please log in to offer a ride.");
-      return;
-    }
-
-    const newRide = {
-      ...formData,
-      userId: user.uid,
-      timestamp: serverTimestamp(),
+  // Fetch all rides based on selected tab
+  useEffect(() => {
+    const fetchRides = async () => {
+      const querySnapshot = await getDocs(collection(db, "blabla"));
+      const rideList = querySnapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((ride) => ride.rideType !== selectedTab); // Show opposite ride type
+      setRides(rideList);
     };
+    fetchRides();
+  }, [selectedTab]); // Fetch whenever tab changes
 
+  // Handle Ride Submission
+  const handleRideSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      await addDoc(collection(db, "rides"), newRide);
+      await addDoc(collection(db, "blabla"), {
+        rideType,
+        startAddress,
+        endAddress,
+        price,
+        seatsAvailable,
+        contactNumber,
+        userId: auth.currentUser?.uid || "anonymous",
+        createdAt: new Date(),
+      });
       alert("Ride added successfully!");
       setShowForm(false);
-      fetchRides();
     } catch (error) {
       console.error("Error adding ride:", error);
     }
+    setLoading(false);
   };
 
-  // Confirm a Ride
+  // Confirm Ride & Store in `cirm` Collection
   const confirmRide = async (rideId) => {
-    if (!user) {
+    if (!auth.currentUser) {
       alert("Please log in to confirm a ride.");
       return;
     }
-
     try {
-      await addDoc(collection(db, "confirmedRides"), {
-        rideId,
-        confirmedByUserId: user.uid,
-        timestamp: serverTimestamp(),
+      const confirmRef = doc(collection(db, "cirm"), rideId);
+      await setDoc(confirmRef, {
+        userId: auth.currentUser.uid,
+        rideId: rideId,
+        confirmedAt: new Date(),
       });
       alert("Ride confirmed successfully!");
-      fetchConfirmedRides();
     } catch (error) {
       console.error("Error confirming ride:", error);
     }
   };
 
-  // Fetch Available Rides
-  const fetchRides = async () => {
-    const querySnapshot = await getDocs(collection(db, "rides"));
-    const rideList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setRides(rideList);
-  };
-
-  // Fetch Confirmed Rides for the Logged-in User
-  const fetchConfirmedRides = useCallback(async () => {
-    if (!user) return;
-
-    const q = query(collection(db, "confirmedRides"), where("confirmedByUserId", "==", user.uid));
-    const querySnapshot = await getDocs(q);
-    const confirmedList = querySnapshot.docs.map(doc => doc.data().rideId);
-    setConfirmedRides(confirmedList);
-  }, [user]);
-
-  useEffect(() => {
-    fetchConfirmedRides();
-  }, [fetchConfirmedRides]); // ✅ Now correctly using useCallback
-
   return (
-    <div className="blabla-container">
-      <h1>BlaBla Ride Sharing</h1>
-      <div className="ride-options">
-        <button onClick={() => setShowForm(true)}>
-          <FaCar /> Offer a Ride
-        </button>
-      </div>
+    <div className="ride-container">
+      <h2>🚗 BlaBla Rides</h2>
 
+      {/* Create New Ride Button */}
+      <button className="btn-create" onClick={() => setShowForm(!showForm)}>
+        {showForm ? "❌ Close Form" : "➕ Create New Ride"}
+      </button>
+
+      {/* Ride Form */}
       {showForm && (
-        <form className="ride-form" onSubmit={handleSubmit}>
-          <label>Start Address:</label>
-          <input type="text" name="startAddress" value={formData.startAddress} onChange={handleChange} required />
-          
-          <label>End Address:</label>
-          <input type="text" name="endAddress" value={formData.endAddress} onChange={handleChange} required />
-          
-          <label>Pincode:</label>
-          <input type="text" name="pincode" value={formData.pincode} onChange={handleChange} required />
-          
-          <label>Phone Number:</label>
-          <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required />
-          
-          <label>Price (INR):</label>
-          <input type="number" name="price" value={formData.price} onChange={handleChange} required />
-          
-          <label>Ride Type:</label>
-          <select name="rideType" value={formData.rideType} onChange={handleChange}>
-            <option value="offer">Offer a Ride</option>
-            <option value="need">Need a Ride</option>
-          </select>
-
-          <button type="submit">Submit</button>
+        <form className="ride-form animate-fade" onSubmit={handleRideSubmit}>
+          <label>
+            Ride Type:
+            <select value={rideType} onChange={(e) => setRideType(e.target.value)}>
+              <option value="offer">🚗 Offer a Ride</option>
+              <option value="need">🙋‍♂️ Need a Ride</option>
+            </select>
+          </label>
+          <input type="text" placeholder="📍 Start Address" value={startAddress} onChange={(e) => setStartAddress(e.target.value)} required />
+          <input type="text" placeholder="📍 End Address" value={endAddress} onChange={(e) => setEndAddress(e.target.value)} required />
+          {rideType === "offer" && (
+            <>
+              <input type="number" placeholder="💰 Price" value={price} onChange={(e) => setPrice(e.target.value)} required />
+              <input type="number" placeholder="🪑 Seats Available" value={seatsAvailable} onChange={(e) => setSeatsAvailable(e.target.value)} required />
+            </>
+          )}
+          <input type="tel" placeholder="📞 Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} required />
+          <button type="submit" disabled={loading}>
+            {loading ? "🚀 Saving..." : "✅ Submit Ride"}
+          </button>
         </form>
       )}
 
-      {/* Available Rides */}
-      <h2>Available Rides</h2>
-      <ul>
-        {rides.map((ride) => (
-          <li key={ride.id}>
-            <strong>{ride.startAddress} → {ride.endAddress}</strong> 
-            <p>Pincode: {ride.pincode} | Phone: {ride.phoneNumber}</p>
-            <p>Price: ₹{ride.price} | Type: {ride.rideType}</p>
-            {!confirmedRides.includes(ride.id) && (
-              <button onClick={() => confirmRide(ride.id)}>
-                Confirm Ride
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {/* Ride Type Tabs */}
+      <div className="ride-tabs">
+        <button className={selectedTab === "offer" ? "active" : ""} onClick={() => setSelectedTab("offer")}>
+          🚗 View Need Rides
+        </button>
+        <button className={selectedTab === "need" ? "active" : ""} onClick={() => setSelectedTab("need")}>
+          👥 View Offered Rides
+        </button>
+      </div>
 
-      {/* User's Confirmed Rides */}
-      <h2>My Confirmed Rides</h2>
-      <ul>
-        {rides.filter(ride => confirmedRides.includes(ride.id)).map((ride) => (
-          <li key={ride.id}>
-            <FaCheckCircle style={{ color: "green" }} />
-            <strong>{ride.startAddress} → {ride.endAddress}</strong>
-            <p>Pincode: {ride.pincode} | Phone: {ride.phoneNumber}</p>
-            <p>Price: ₹{ride.price} | Type: {ride.rideType}</p>
-          </li>
-        ))}
-      </ul>
+      {/* Display Available Rides Based on Selection */}
+      <div className="ride-list">
+        <h3>{selectedTab === "offer" ? "🙋‍♂️ People Who Need Rides" : "🚗 Available Offered Rides"}</h3>
+        {rides.length === 0 ? (
+          <p>🚫 No rides available.</p>
+        ) : (
+          rides.map((ride) => (
+            <div key={ride.id} className="ride-card animate-slide">
+              <p><strong>🛣 Start:</strong> {ride.startAddress}</p>
+              <p><strong>🏁 End:</strong> {ride.endAddress}</p>
+              {ride.rideType === "offer" && (
+                <>
+                  <p><strong>💰 Price:</strong> ₹{ride.price}</p>
+                  <p><strong>🪑 Seats Available:</strong> {ride.seatsAvailable}</p>
+                </>
+              )}
+              <p><strong>📞 Contact:</strong> {ride.contactNumber}</p>
+              <button className="btn-confirm" onClick={() => confirmRide(ride.id)}>
+                ✅ Confirm Ride
+              </button>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };
 
-export default BlaBla;
+export default Blabla;
